@@ -78,31 +78,38 @@ type Card struct {
 	Available bool
 }
 
+var gscore1 = 0
+var gscore2 = 0
+
 func main() {
 	anothergame := true
 	for anothergame {
 		rand.Seed(time.Now().UTC().UnixNano())
 		bjgame := new(Game)
 		bjgame.InitGame()
+
 		for bjgame.running {
 			for i := 0; bjgame.turn.numberofturns >= i; i++ {
 				activeplayer := bjgame.turn.whosturn
 				turnactive := true
 				for turnactive {
 					clearscreen()
-					if !bjgame.checkstate() {
-						bjgame.running = false
+					bjgame.checkstate()
+					if !bjgame.running {
 						break
 					}
 					if bjgame.players[activeplayer].Name == "Dealer" {
 						bjgame.strategy()
 					} else {
-						fmt.Println(bjgame.players[activeplayer].Name, "Turn!")
-						printgfxcards(bjgame.players[activeplayer].Cards)
-						fmt.Println(bjgame.players[activeplayer].Name, " total is: ", bjgame.players[activeplayer].Score)
-						fmt.Println("-------------------")
-						bjgame.action(activeplayer, getresponse("(g) Hit, (h) Hold: "))
-						fmt.Println("-------------------")
+						fmt.Println("", bjgame.players[activeplayer].Name, "Turn!")
+						fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+						printgfxcards(bjgame.players[activeplayer].Cards, false)
+						fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+						fmt.Println("", bjgame.players[activeplayer].Name, " total is: ", bjgame.players[activeplayer].Score)
+						fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+						printgfxcards(bjgame.players[activeplayer+1].Cards, true)
+						fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+						bjgame.action(activeplayer, getresponse(" (g) Hit, (h) Hold: "))
 
 					}
 					if !bjgame.players[activeplayer].IsTurn { //has player ended turn
@@ -121,6 +128,7 @@ func main() {
 			//debug
 			//fmt.Println(bjgame.players)
 		}
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
 		resp := getresponse("Want to play again? (y/n):")
 		resp = strings.ToLower(resp)
 		if resp == "n" {
@@ -319,28 +327,53 @@ func (game *Game) whowins() *Game {
 
 	switch {
 	case player1score == 21 && game.players[0].HasAce && len(game.players[0].Cards) < 3:
-		printgfxcards(game.players[0].Cards)
+		printgfxcards(game.players[0].Cards, false)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
 		fmt.Println("BLACKJACK!! " + player1name + " Has Won!!! ")
-		printgfxcards(game.players[1].Cards)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+		gscore1 = gscore1 + 1
+		printgfxcards(game.players[1].Cards, false)
 	case player2score == 21 && game.players[1].HasAce && len(game.players[1].Cards) < 3:
-		printgfxcards(game.players[0].Cards)
+		printgfxcards(game.players[0].Cards, false)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
 		fmt.Println("BLACKJACK!! " + player2name + " Has Won!!! ")
-		printgfxcards(game.players[1].Cards)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+		printgfxcards(game.players[1].Cards, false)
+		gscore2 = gscore2 + 1
 	case player1score > 21:
+		printgfxcards(game.players[0].Cards, false)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
 		fmt.Println(player1name, "is Bust!! "+player2name+" Has Won!! "+player1name+" Score:", player1score)
-		printgfxcards(game.players[0].Cards)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+		printgfxcards(game.players[1].Cards, false)
+		gscore2 = gscore2 + 1
 	case player2score > 21:
+		printgfxcards(game.players[0].Cards, false)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
 		fmt.Println(player2name, "is Bust!! "+player1name+" Has Won!! "+player2name+" Score:", player2score)
-		printgfxcards(game.players[1].Cards)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+		gscore1 = gscore1 + 1
+		printgfxcards(game.players[1].Cards, false)
 	case player1score > player2score:
+		printgfxcards(game.players[0].Cards, false)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
 		fmt.Println(player1name, "has Won!! "+player2name+" Score:", player2score)
-		printgfxcards(game.players[1].Cards)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+		printgfxcards(game.players[1].Cards, false)
+		gscore1 = gscore1 + 1
 	case player2score > player1score:
+		printgfxcards(game.players[0].Cards, false)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
 		fmt.Println(player2name, "has Won!! Score:", player2score)
-		printgfxcards(game.players[1].Cards)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+		printgfxcards(game.players[1].Cards, false)
+		gscore2 = gscore2 + 1
 	case player1score == player2score:
+		printgfxcards(game.players[0].Cards, false)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
 		fmt.Println("It's a Draw :'(")
-		printgfxcards(game.players[1].Cards)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+		printgfxcards(game.players[1].Cards, false)
 
 	}
 
@@ -349,21 +382,26 @@ func (game *Game) whowins() *Game {
 
 //TODO
 
-func (game *Game) checkstate() bool {
+func (game *Game) checkstate() *Game {
+
+	bjprompt(game.players[0].Name, game.players[0].Score, game.players[1].Name, game.players[1].Score)
 	for i := range game.players {
 		//dealt a natural blackjack i.e Ace and 10 or above?
 		if game.players[i].HasAce && game.players[i].Score == 21 && len(game.players[i].Cards) < 3 {
-			return false
+			game.running = false
+			return game
 		}
 		if game.players[i].Score > 21 {
 			if game.players[i].HasAce {
 				game.players[i].Score = game.players[i].Score - 10 //give the player ace's lower value
-				return true
+				return game
+				break
 			}
-			return false
+			game.running = false
+			return game
 		}
 	}
-	return true
+	return game
 }
 func (game *Game) strategy() *Game {
 	if game.players[1].Score <= 16 {
@@ -375,30 +413,63 @@ func (game *Game) strategy() *Game {
 		fmt.Println("Dealer is holding")
 
 	}
+	fmt.Println("+++++++++++++++++++++++++++++++++++++++")
 	return game
 }
 
-func printgfxcards(cards []Card) {
+func bjprompt(name1 string, score1 int, name2 string, score2 int) {
+	fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+	fmt.Println("", name1, ":", gscore1, " vs ", name2, ":", gscore2)
+	fmt.Println("+++++++++++++++++++++++++++++++++++++++")
+}
+
+func printgfxcards(cards []Card, hide bool) {
 	line := make([]string, 5)
-	for i := range cards {
-		ctype := strings.Split(cards[i].Type, "")[0]
+
+	if !hide {
+		for i := range cards {
+			ctype := strings.Split(cards[i].Type, "")[0]
+			if _, err := strconv.Atoi(ctype); err == nil {
+				ctype = cards[i].Type
+			}
+			line[0] = line[0] + "  ----- "
+			if len(ctype) > 1 {
+				line[1] = line[1] + " | " + ctype + "  |"
+			} else {
+				line[1] = line[1] + " | " + ctype + "   |"
+			}
+			line[2] = line[2] + (" |     |")
+			//line[3] = line[3] + " |  " + strconv.Itoa(cards[i].Value) + "  |"
+			line[3] = line[3] + " |  " + cards[i].Suite + "  |"
+
+			line[4] = line[0]
+		}
+		for i := range line {
+			fmt.Println(line[i])
+		}
+
+	} else {
+
+		ctype := strings.Split(cards[0].Type, "")[0]
 		if _, err := strconv.Atoi(ctype); err == nil {
-			ctype = cards[i].Type
+			ctype = cards[0].Type
 		}
-		line[0] = line[0] + "  ----- "
+		line[0] = line[0] + "  -----   -----"
 		if len(ctype) > 1 {
-			line[1] = line[1] + " | " + ctype + "  |"
+			line[1] = line[1] + " | " + ctype + "  | | * \u0398 |"
 		} else {
-			line[1] = line[1] + " | " + ctype + "   |"
+			line[1] = line[1] + " | " + ctype + "   | | * \u0398 |"
 		}
-		line[2] = line[2] + (" |     |")
+		line[2] = line[2] + (" |     | |  *  |")
 		//line[3] = line[3] + " |  " + strconv.Itoa(cards[i].Value) + "  |"
-		line[3] = line[3] + " |  " + cards[i].Suite + "  |"
+		line[3] = line[3] + " |  " + cards[0].Suite + "  | | \u0394 * |"
 
 		line[4] = line[0]
-	}
-	for i := range line {
-		fmt.Println(line[i])
+
+		for i := range line {
+			fmt.Println(line[i])
+		}
+
 	}
 }
 func clearscreen() {
@@ -406,3 +477,11 @@ func clearscreen() {
 	cmd.Stdout = os.Stdout
 	cmd.Run()
 }
+
+/*
+1  -----
+2 | \ j |
+3 |  \  |
+4 | b \ |
+5  -----
+*/
