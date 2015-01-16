@@ -50,12 +50,13 @@ type Game struct {
 
 //Player has a turn, cards and a score
 type Player struct {
-	Name      string
-	Cards     []Card
-	Score     int
-	IsTurn    bool
-	HasAce    bool
-	AceAmount int
+	Name         string
+	Cards        []Card
+	Score        int
+	IsTurn       bool
+	HasAce       bool
+	AceAmount    int
+	ConvertedAce int
 }
 
 //Turn that can be taken on a turn
@@ -93,7 +94,7 @@ func main() {
 				activeplayer := bjgame.turn.whosturn
 				turnactive := true
 				for turnactive {
-					clearscreen()
+					//clearscreen()
 					bjgame.checkstate()
 					if !bjgame.running {
 						break
@@ -121,8 +122,10 @@ func main() {
 						bjgame.players[activeplayer].IsTurn = true //reset
 						turnactive = false                         //end turn
 					}
+					fmt.Println("A1:", bjgame.players[0].Score)
 				}
 			}
+			fmt.Println("B1:", bjgame.players[0].Score)
 			bjgame.whowins()
 			bjgame.running = false
 			//debug
@@ -178,6 +181,7 @@ func (player *Player) NewPlayer(name string, deck Deck) *Player {
 	player.IsTurn = false
 	player.Score = 0
 	player.Name = name
+	player.ConvertedAce = 0
 	return player
 }
 
@@ -216,10 +220,16 @@ func (player *Player) hold() *Player {
 
 func (player *Player) setscore() *Player {
 	player.Score = 0
+
 	for i := 0; len(player.Cards) > i; i++ {
 		player.Score = player.Score + player.Cards[i].Value
 	}
 	//fmt.Println("score is", player.Score)
+	if player.ConvertedAce > 0 {
+		for i := 0; player.ConvertedAce > i; i++ {
+			player.Score = player.Score - 10
+		}
+	}
 	return player
 }
 func (deck *Deck) createdeck(numberofdecks int) *Deck {
@@ -263,6 +273,8 @@ func (player *Player) assigncards(deck Deck, amount int) (*Player, Deck) {
 		for !assigned {
 			orderindex := deck.Order[rand.Intn(51)]
 			if deck.Cards[orderindex].Available {
+				//debug
+				//player.Cards = []Card{Card{"Ace", 11, "\u2661", true}, Card{"8", 8, "\u2661", true}}
 				player.Cards[i] = deck.Cards[orderindex]
 				deck.Cards[orderindex].Available = false
 				assigned = true
@@ -319,11 +331,14 @@ func checkresponse(validinput []string, input string) bool {
 	return false
 }
 
-func (game *Game) whowins() *Game {
+func (game *Game) whowins() {
 	player1score := game.players[0].Score
 	player2score := game.players[1].Score
 	player1name := game.players[0].Name
 	player2name := game.players[1].Name
+
+	fmt.Println("Score1 =", player1score)
+	fmt.Println("Score2 =", player2score)
 
 	switch {
 	case player1score == 21 && game.players[0].HasAce && len(game.players[0].Cards) < 3:
@@ -376,8 +391,6 @@ func (game *Game) whowins() *Game {
 		printgfxcards(game.players[1].Cards, false)
 
 	}
-
-	return game
 }
 
 //TODO
@@ -392,8 +405,10 @@ func (game *Game) checkstate() *Game {
 			return game
 		}
 		if game.players[i].Score > 21 {
-			if game.players[i].HasAce {
-				game.players[i].Score = game.players[i].Score - 10 //give the player ace's lower value
+			if game.players[i].HasAce && game.players[i].AceAmount > 0 {
+				game.players[i].Score = game.players[i].Score - 10              //give the player ace's lower value
+				game.players[i].ConvertedAce = game.players[i].ConvertedAce + 1 //reduce the amount so check is not triggered
+				game.players[i].AceAmount = game.players[i].AceAmount - 1
 				return game
 				break
 			}
@@ -424,50 +439,50 @@ func bjprompt(name1 string, score1 int, name2 string, score2 int) {
 }
 
 func printgfxcards(cards []Card, hide bool) {
-	line := make([]string, 5)
-
+	line1 := make([]string, 5)
+	line2 := make([]string, 5)
 	if !hide {
 		for i := range cards {
-			ctype := strings.Split(cards[i].Type, "")[0]
-			if _, err := strconv.Atoi(ctype); err == nil {
-				ctype = cards[i].Type
+			ctype1 := strings.Split(cards[i].Type, "")[0]
+			if _, err := strconv.Atoi(ctype1); err == nil {
+				ctype1 = cards[i].Type
 			}
-			line[0] = line[0] + "  ----- "
-			if len(ctype) > 1 {
-				line[1] = line[1] + " | " + ctype + "  |"
+			line1[0] = line1[0] + "  ----- "
+			if len(ctype1) > 1 {
+				line1[1] = line1[1] + " | " + ctype1 + "  |"
 			} else {
-				line[1] = line[1] + " | " + ctype + "   |"
+				line1[1] = line1[1] + " | " + ctype1 + "   |"
 			}
-			line[2] = line[2] + (" |     |")
+			line1[2] = line1[2] + (" |     |")
 			//line[3] = line[3] + " |  " + strconv.Itoa(cards[i].Value) + "  |"
-			line[3] = line[3] + " |  " + cards[i].Suite + "  |"
+			line1[3] = line1[3] + " |   " + cards[i].Suite + " |"
 
-			line[4] = line[0]
+			line1[4] = line1[0]
 		}
-		for i := range line {
-			fmt.Println(line[i])
+		for i := range line1 {
+			fmt.Println(line1[i])
 		}
 
 	} else {
 
-		ctype := strings.Split(cards[0].Type, "")[0]
-		if _, err := strconv.Atoi(ctype); err == nil {
-			ctype = cards[0].Type
+		ctype2 := strings.Split(cards[0].Type, "")[0]
+		if _, err := strconv.Atoi(ctype2); err == nil {
+			ctype2 = cards[0].Type
 		}
-		line[0] = line[0] + "  -----   -----"
-		if len(ctype) > 1 {
-			line[1] = line[1] + " | " + ctype + "  | | * \u0398 |"
+		line2[0] = line2[0] + "  -----   -----"
+		if len(ctype2) > 1 {
+			line2[1] = line2[1] + " | " + ctype2 + "  | | * \u0398 |"
 		} else {
-			line[1] = line[1] + " | " + ctype + "   | | * \u0398 |"
+			line2[1] = line2[1] + " | " + ctype2 + "   | | * \u0398 |"
 		}
-		line[2] = line[2] + (" |     | |  *  |")
+		line2[2] = line2[2] + (" |     | |  *  |")
 		//line[3] = line[3] + " |  " + strconv.Itoa(cards[i].Value) + "  |"
-		line[3] = line[3] + " |  " + cards[0].Suite + "  | | \u0394 * |"
+		line2[3] = line2[3] + " |   " + cards[0].Suite + " | | \u0394 * |"
 
-		line[4] = line[0]
+		line2[4] = line2[0]
 
-		for i := range line {
-			fmt.Println(line[i])
+		for i := range line2 {
+			fmt.Println(line2[i])
 		}
 
 	}
